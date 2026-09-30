@@ -1,7 +1,7 @@
 # ngn-fba-ai
 
 OCR、LayoutLMv3 和字符清洗的统一仓库，三个子包保留独立依赖环境。
-目前已迁入训练、评估和推理核心；三个 gRPC 服务、GPU Docker 部署及 scan 对接仍在迁移中。
+包含训练、评估和三个独立 gRPC GPU 服务；推理协议位于 `proto/ngn_fba_ai_proto/ai.proto`。
 
 | 目录 | 来源 | 用途 |
 | --- | --- | --- |
@@ -85,3 +85,36 @@ shasum -a 256 -c final-fit-v1-models.tar.gz.sha256
 ```
 
 只获取代码时使用 `GIT_LFS_SKIP_SMUDGE=1 git clone git@github.com:mydansun/ngn-fba-ai.git`。
+
+## gRPC 与部署
+
+`compose.yaml` 在 GPU 机器运行 OCR、LayoutLMv3、三个 LSTM 共用的清洗服务及 frpc。
+每个模型容器内部使用 50051，均不发布主机端口。服务要求 `x-api-key` metadata，
+图片上限20MiB/2500万像素，清洗每批最多256条、每条512字符；GPU调用串行且队列有界。
+OCR 返回处理后 JPEG 与文字/坐标数组；LayoutLM 返回预测结构与可视化；清洗按字段类型批处理。
+预测 JSON 保留 scan 的既有整数索引、坐标和存储结构，传输层为 protobuf/gRPC。
+
+业务机运行 `deploy/compose.relay.yaml` 中的 frps，GPU 主动连接业务机443。
+Traefik 仅按 SNI `fba-ai.internal` 透传此 TLS 连接，使用项目私有 CA 双向验证和 token；
+无需新增 DNS 记录或开放公网 gRPC 端口。业务 Docker 网络 `ngn-fba-ai-relay` 内的
+`ai-relay:50052/50053/50054` 分别转发 OCR/LayoutLM/clean。
+
+部署前在 GPU 项目目录执行：
+
+```sh
+python3 deploy/provision_tunnel.py --output .secrets --server "$FBA_RELAY_HOST"
+# 验证 LFS 权重包后解压，形成 models/layout 和 models/clean。
+tar -xzf artifacts/models/final-fit-v1-models.tar.gz models
+# 将 .secrets/frps 和 deploy/compose.relay.yaml 放到业务机独立 relay 目录。
+# 将同一个 .secrets/api_key 安全配置为 scan 的 AI_API_KEY，不打印或提交。
+docker compose build
+docker compose up -d
+```
+
+正式运行 checkout 放 `~/opt/ngn-fba-ai`；`~/projects` 用于开发。
+私有 CA 密钥仅留在 `.secrets/pki`，不分发给业务机。叶证书有效期365天，轮换时为两端
+重新签发并更新证书后重启 frps/frpc。协议代码可用 `deploy/generate_protocol.sh` 重新生成，
+再运行 `python3 deploy/sync_protocol.py <scan-backend-path>` 同步扫描服务的生成代码。
+
+frp 配置依据 [官方示例](https://github.com/fatedier/frp/tree/v0.71.0/conf)，
+TLS 入口使用 [Traefik TCP passthrough](https://doc.traefik.io/traefik/reference/routing-configuration/tcp/tls/)。

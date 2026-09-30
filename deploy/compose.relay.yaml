@@ -1,0 +1,25 @@
+name: ngn-fba-ai-relay
+services:
+  frps:
+    image: ghcr.io/fatedier/frps:v0.71.0@sha256:cd8b947ba61678b200baa4f71ccc33f3c52e4e2cc0059700ba3b8354e36af7c3
+    user: '1000:1000'
+    restart: unless-stopped
+    command: [-c, /etc/frp/frps.toml]
+    volumes: [./.secrets/frps:/etc/frp:ro]
+    networks:
+      traefik:
+      ai:
+        aliases: [ai-relay]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.tcp.routers.fba-ai-relay.rule=HostSNI(`fba-ai.internal`)
+      - traefik.tcp.routers.fba-ai-relay.entrypoints=websecure
+      - traefik.tcp.routers.fba-ai-relay.tls.passthrough=true
+      - traefik.tcp.routers.fba-ai-relay.service=fba-ai-relay
+      - traefik.tcp.services.fba-ai-relay.loadbalancer.server.port=7000
+networks:
+  traefik:
+    external: true
+  ai:
+    name: ngn-fba-ai-relay

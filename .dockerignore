@@ -1,0 +1,12 @@
+.git
+.venv
+**/.venv
+.cache
+**/__pycache__
+.artifacts
+artifacts
+.secrets
+.env*
+AGENTS.md
+models
+data

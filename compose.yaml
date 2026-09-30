@@ -1,0 +1,55 @@
+name: ngn-fba-ai
+x-gpu: &gpu
+  restart: unless-stopped
+  gpus: all
+  init: true
+  stop_grace_period: 40s
+  environment: &env
+    AI_API_KEY_FILE: /run/secrets/api_key
+    MODEL_VERSION: final-fit-v1
+  secrets: [api_key]
+  healthcheck:
+    test: [CMD, python, -m, ngn_fba_ai_proto.health]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 180s
+services:
+  ocr:
+    <<: *gpu
+    image: ngn-fba-ai-ocr:0.1.0
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.ocr
+    volumes: [./.cache/paddlex:/cache/paddlex]
+  layout:
+    <<: *gpu
+    image: ngn-fba-ai-layout:0.1.0
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.torch
+      args: {SERVICE: layout}
+    environment:
+      <<: *env
+      MODEL_DIR: /models/layout
+    volumes: [./models:/models:ro]
+  clean:
+    <<: *gpu
+    image: ngn-fba-ai-clean:0.1.0
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.torch
+      args: {SERVICE: clean}
+    environment:
+      <<: *env
+      MODEL_DIR: /models/clean
+    volumes: [./models:/models:ro]
+  frpc:
+    user: '1000:1000'
+    image: ghcr.io/fatedier/frpc:v0.71.0@sha256:99ece6a2b62cfc68731e0df289af804ff1c699911cfc47871856434f1d6d53ee
+    restart: unless-stopped
+    command: [-c, /etc/frp/frpc.toml]
+    volumes: [./.secrets/frpc:/etc/frp:ro]
+secrets:
+  api_key:
+    file: ./.secrets/api_key

@@ -1,0 +1,18 @@
+syntax = "proto3";
+package ngn.fba.ai.v1;
+message Empty {}
+message HealthResponse { string model = 1; }
+message ImageRequest { bytes image = 1; optional bool unwarping = 2; }
+// OCR JSON preserves Paddle's text/polygon arrays and original block indices.
+message OcrResult { bytes image = 1; bytes ocr_json = 2; double elapsed_seconds = 3; }
+// Versioned legacy prediction JSON preserves integer indices and the scan DB schema.
+message LayoutResult { bytes result_json = 1; bytes visualization = 2; }
+message CleanRequest {
+  enum Kind { UNSPECIFIED = 0; TRACK = 1; SKU = 2; RECIPIENT = 3; }
+  Kind kind = 1;
+  repeated string texts = 2;
+}
+message CleanResult { repeated string texts = 1; }
+service OcrService { rpc Recognize(ImageRequest) returns (OcrResult); rpc Health(Empty) returns (HealthResponse); }
+service LayoutService { rpc Predict(OcrResult) returns (LayoutResult); rpc Health(Empty) returns (HealthResponse); }
+service CleanService { rpc Clean(CleanRequest) returns (CleanResult); rpc Health(Empty) returns (HealthResponse); }
