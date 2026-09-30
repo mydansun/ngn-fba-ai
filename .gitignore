@@ -29,3 +29,7 @@ dist/
 *.pem
 *.key
 *.crt
+.rsync-partial/
+/artifacts/models/*
+!/artifacts/models/*.tar.gz
+!/artifacts/models/*.sha256

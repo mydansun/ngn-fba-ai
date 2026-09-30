@@ -10,7 +10,8 @@ OCR、LayoutLMv3 和字符清洗的统一仓库，三个子包保留独立依赖
 | `packages/clean/ngn_fba_clean` | nga-clean `22ec63c` | 快递号、SKU、收件人 LSTM 训练、推理 |
 | `training` | nga-torch 恢复训练工具 | 数据隔离、五折验证、最终拟合、共同留出集对照 |
 
-主机信息仅放本地且已忽略的 `AGENTS.md`。业务数据、图片、密钥和权重不提交 Git。
+主机信息仅放本地且已忽略的 `AGENTS.md`。业务数据、图片和密钥不提交 Git。
+发布权重压缩包通过 Git LFS 管理，Git 中只提交指针及 SHA256 校验文件。
 开发代码放 `~/projects/ngn-fba-ai`；正式运行形态放 `~/opt/ngn-fba-ai`。
 
 ## 训练环境
@@ -71,3 +72,16 @@ SKU 9、recipient 19，seed 42。三个清洗任务分别使用去重、冲突�
 
 候选权重包为 `final-fit-v1-models.tar.gz`（487999318 字节），已压缩 rsync 备份并校验。
 SHA256：`b13000580db10796c2fa136c2031583982ba965771b29435a1677fcc4e185d2c`。
+
+Git LFS 路径为 `artifacts/models/final-fit-v1-models.tar.gz`，包含 LayoutLMv3 和
+track、SKU、recipient 三个清洗模型，以及训练、评估和文件校验记录。
+安装 Git LFS 客户端后，在仓库中执行：
+
+```sh
+git lfs install --local
+git lfs pull --include='artifacts/models/final-fit-v1-models.tar.gz'
+cd artifacts/models
+shasum -a 256 -c final-fit-v1-models.tar.gz.sha256
+```
+
+只获取代码时使用 `GIT_LFS_SKIP_SMUDGE=1 git clone git@github.com:mydansun/ngn-fba-ai.git`。
