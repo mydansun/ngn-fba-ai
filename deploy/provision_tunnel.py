@@ -50,7 +50,7 @@ allowPorts = [{start=50052, end=50054}]
 maxPortsPerClient = 3
 '''+common)
 client=f'''serverAddr = "{a.server}"
-serverPort = 443
+serverPort = 1201
 loginFailExit = false
 transport.tls.enable = true
 transport.tls.serverName = "fba-ai.internal"

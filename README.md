@@ -94,8 +94,9 @@ shasum -a 256 -c final-fit-v1-models.tar.gz.sha256
 OCR 返回处理后 JPEG 与文字/坐标数组；LayoutLM 返回预测结构与可视化；清洗按字段类型批处理。
 预测 JSON 保留 scan 的既有整数索引、坐标和存储结构，传输层为 protobuf/gRPC。
 
-业务机运行 `deploy/compose.relay.yaml` 中的 frps，GPU 主动连接业务机443。
-Traefik 仅按 SNI `fba-ai.internal` 透传此 TLS 连接，使用项目私有 CA 双向验证和 token；
+业务机运行 `deploy/compose.relay.yaml` 中的 frps，发布 TCP 1201 到容器7000。
+GPU 主动直连业务机1201，使用项目私有 CA 双向验证和 token，无需经过 Traefik。
+防火墙需放行 TCP 1201；当前传输不使用 UDP。`fba-ai.internal` 仅用作证书身份校验，
 无需新增 DNS 记录或开放公网 gRPC 端口。业务 Docker 网络 `ngn-fba-ai-relay` 内的
 `ai-relay:50052/50053/50054` 分别转发 OCR/LayoutLM/clean。
 
@@ -116,8 +117,7 @@ docker compose up -d
 重新签发并更新证书后重启 frps/frpc。协议代码可用 `deploy/generate_protocol.sh` 重新生成，
 再运行 `python3 deploy/sync_protocol.py <scan-backend-path>` 同步扫描服务的生成代码。
 
-frp 配置依据 [官方示例](https://github.com/fatedier/frp/tree/v0.71.0/conf)，
-TLS 入口使用 [Traefik TCP passthrough](https://doc.traefik.io/traefik/reference/routing-configuration/tcp/tls/)。
+frp 配置依据 [官方示例](https://github.com/fatedier/frp/tree/v0.71.0/conf)。
 
 ### 2026-09-30 部署验证
 
